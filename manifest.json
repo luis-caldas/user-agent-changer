@@ -1,0 +1,22 @@
+{
+    "version": "0.0.1",
+    "manifest_version": 2,
+    "icons": {
+        "16": "icons/icon16.png",
+        "19": "icons/icon19.png",
+        "38": "icons/icon38.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png" 
+    },
+    "browser_action": {
+        "default_popup": "popup.html",
+        "default_title": "User-Agent Switcher"
+    },
+    "background": {
+        "scripts": [ "background.js" ]
+    },
+    "description": "User-Agent switcher that allows you to build your own with pieces of your origial one",
+    "minimum_chrome_version": "20.0",
+    "name": "User-Agent Switcher",
+    "permissions": [ "webRequest", "webRequestBlocking", "storage", "<all_urls>" ]
+}
