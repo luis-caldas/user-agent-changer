@@ -10,7 +10,7 @@ var backgroundPage = chrome.extension.getBackgroundPage();
 var keyPressedToStore = 13;
 
 // shorten the variable
-var storage = chrome.storage.local;
+var storage = backgroundPage.storage;
 
 $(document).ready(function() {
 
