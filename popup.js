@@ -1,62 +1,92 @@
-// Waits for popup to load so it can start to add listeners to elements
+/* JS that is loaded with the html frame
+ */
 
-var background_page = chrome.extension.getBackgroundPage();
+"use strict";
 
+// acquire the reference to the background page
+var backgroundPage = chrome.extension.getBackgroundPage();
+
+ // return, enter key
+var keyPressedToStore = 13;
+
+// shorten the variable
 var storage = chrome.storage.local;
 
 $(document).ready(function() {
-    var user_agent_now = navigator.userAgent;
-    var regex_spaces = / (?=(?:"[^"]*"|\([^()]*\)|\[[^\[\]]*\]|\{[^{}]*}|[^"\[{}()\]])*$)/
-    var user_agent_pieces = user_agent_now.split(regex_spaces);
 
-    var string_pieces_and_symbols = "";
-    for (var pieces_index = 0, pieces_length = user_agent_pieces.length; pieces_index < pieces_length; ++pieces_index) {
-        string_pieces_and_symbols += "${{" + pieces_index.toString() + "}}";
-        string_pieces_and_symbols += " > ";
-        string_pieces_and_symbols += user_agent_pieces[pieces_index];
-        string_pieces_and_symbols += "</br>";
+    // use function from background to get the original ua in pieces
+    let userAgentPieces = backgroundPage.getUserAgentPieces();
+
+    // initialize the symbols string
+    let piecesSymbols = "";
+
+    for (var piecesIndex = 0; piecesIndex < userAgentPieces.length; ++piecesIndex) {
+        piecesSymbols += "${{" + piecesIndex.toString() + "}}";
+        piecesSymbols += " > ";
+        piecesSymbols += userAgentPieces[piecesIndex];
+        piecesSymbols += "</br>";
     }
 
-    $("#user_agent_now").html(user_agent_now);
-    $("#user_agent_pieces").html(string_pieces_and_symbols);
+    // write the data to the popup
+    $("#user-agent-now").html(backgroundPage.originalUserAgent);
+    $("#user-agent-pieces").html(piecesSymbols);
 
-    $("#on_or_not").prop("checked", background_page.on_or_not);
-    $("#on_or_not").change(function() {
-        var is_checked = $(this).prop("checked");
-        storage.set({"status": is_checked}, function(){
+    // get the status and show it in the button
+    $("#on-or-not").prop("checked", backgroundPage.localVariables["status"]);
+    // create the on change callback
+    $("#on-or-not").change(function() {
+
+        // store the new state
+        let isChecked = $(this).prop("checked");
+
+        // store it
+        storage.set({"status": isChecked}, function(){
             if (chrome.runtime.lastError) alert("Error on setting the status data");
-            else {
-                background_page.on_or_not = is_checked;
-                background_page.update_icon();
-                update_agent();
-            }
         });
+
+        // update local items and update the icon
+        backgroundPage.localVariables["status"] = isChecked;
+        backgroundPage.updateIcon();
+
+        updateAgent();
+
     });
 
-    $("#regex_input").val(background_page.local_string);
-    $("#regex_input").keypress(function(event_key) {
-        if (event_key.which == 13) {
-            var value_string = $(this).val();
+    // set the value on start
+    $("#regex-input").val(backgroundPage.localVariables["localString"]);
+    // create the callback on keypress
+    $("#regex-input").keypress(function(eventKey) {
 
-            storage.set({"string": value_string}, function(){
+        // enter key is pressed
+        if (eventKey.which == 13) {
+
+            // cache string
+            let valueString = $(this).val();
+
+            // store it
+            storage.set({"localString": valueString}, function(){
                 if (chrome.runtime.lastError) alert("Error on setting the storage data");
-                else {
-                    background_page.local_string = value_string;
-                    update_agent();
-                }
             });
+
+            // update the local variable
+            backgroundPage.localVariables["localString"] = valueString;
+
+            updateAgent();
 
             return false;
         }
+
     });
 
-    update_agent();
+    updateAgent();
 
-    $("#regex_input").focus();
+    // change the focus to the input bar
+    $("#regex-input").focus();
+
 });
 
-function update_agent() {
-    built_agent = background_page.build_agent();
-    background_page.user_agent_string = built_agent;
-    $("#user_agent_preview").html(built_agent);
+// update the user agent and show it
+function updateAgent() {
+    backgroundPage.updateAgent();
+    $("#user-agent-preview").html(backgroundPage.userAgentString);
 }

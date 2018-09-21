@@ -1,71 +1,54 @@
-var user_agent_string = null;
-var on_or_not = null;
-var local_string = null;
+/* Handles the background functions of the extension
+ */
 
-var storage = chrome.storage.local;
+"use strict";
 
-var fn1 = false;
-var fn2 = false;
+// save the original
+var originalUserAgent = navigator.userAgent;
 
-storage.get("status", function(data){
-    if (chrome.runtime.lastError) {
+// local variable for the ua
+var userAgentString = null;
 
-        storage.set({"status": false}, function(){
-            if (chrome.runtime.lastError) alert("Error on setting the status data");
-        });
+// variables that will be mirrored to the storage
+var localVariables = {
+    "status": false,
+    "localString": ""
+};
+var localVariablesKeys = Object.keys(localVariables);
 
-        on_or_not = false;
+// shorten the chrome storage var
+var storage = chrome.storage.sync;
 
-    } else
-        on_or_not = data["status"];
+//--------------------------------------------//
 
-    fn1 = true;
-    run_safely_after();
-    update_icon();
-});
+function userAgentHandler(receivedDetails) {
 
-storage.get("string", function(data){
-    if (chrome.runtime.lastError) {
-        storage.set({"string": ""}, function(){
-            if (chrome.runtime.lastError) alert("Error on setting the storage data");
-            else local_string = string_saved;
-        });
+    // dont mess with the headers if the extension is not on or the ua is invalid
+    if (!localVariables["status"] || !userAgentString)
+        return;
 
-    } else
-        local_string = data["string"];
-
-    fn2 = true;
-    run_safely_after();
-});
-
-//callback function
-function run_safely_after() {
-    if (fn1 && fn2) {
-        if ((local_string != "") && (on_or_not)) {
-            user_agent_string = build_agent();
-        }
-    }
-}
-
-user_agent_handler = function (details) {
-
-    if ((user_agent_string == null) || (!on_or_not)) return;
-
-    for (var headers_index = 0, headers_length = details.requestHeaders.length; headers_index < headers_length; ++headers_index) {
-        if (details.requestHeaders[headers_index].name === 'User-Agent') {
-            details.requestHeaders[headers_index].value = user_agent_string;
+    // iterate the headers and change the user agent
+    for (let headersIndex = 0; headersIndex < receivedDetails.requestHeaders.length; ++headersIndex) {
+        if (receivedDetails.requestHeaders[headersIndex].name === 'User-Agent') {
+            receivedDetails.requestHeaders[headersIndex].value = userAgentString;
             break;
         }
     }
 
-    return { requestHeaders: details.requestHeaders };
+    return { requestHeaders: receivedDetails.requestHeaders };
 };
 
-chrome.webRequest.onBeforeSendHeaders.addListener(user_agent_handler, {urls: ["<all_urls>"]},  ["blocking", "requestHeaders"]);
+// add a listener to acquire the headers before the request
+chrome.webRequest.onBeforeSendHeaders.addListener(
+    userAgentHandler,
+    {urls: ["<all_urls>"]},
+    ["blocking", "requestHeaders"]
+);
 
-function update_icon() {
+function updateIcon() {
+    // update the icon shown in the bar
     chrome.browserAction.setIcon({
-        path: on_or_not ?
+        path: localVariables["status"] ?
         {
             "19": "/icons/icon19a.png",
             "38": "/icons/icon38a.png"
@@ -77,28 +60,81 @@ function update_icon() {
     })
 }
 
-function build_agent() {
+function getUserAgentPieces() {
+    let regexSpaces = / (?=(?:"[^"]*"|\([^()]*\)|\[[^\[\]]*\]|\{[^{}]*}|[^"\[{}()\]])*$)/
+    return originalUserAgent.split(regexSpaces);
+}
 
-    var user_agent_now = navigator.userAgent;
-    var regex_spaces = / (?=(?:"[^"]*"|\([^()]*\)|\[[^\[\]]*\]|\{[^{}]*}|[^"\[{}()\]])*$)/
-    var user_agent_pieces = user_agent_now.split(regex_spaces);
-    var pieces_agent_length = user_agent_pieces.length;
+function buildAgent() {
 
-    var matched_parts = local_string.match(/\${{(.*?)}}/g);
+    // get the original ua in pieces
+    let userAgentPieces = getUserAgentPieces();
 
-    var output_agent = local_string;
+    // get the local string matched that will be replaced
+    let matchedParts = localVariables["localString"].match(/\${{(.*?)}}/g);
+    if (matchedParts === null) matchedParts = [];
 
-    for (var pieces_index = 0, pieces_length = matched_parts.length; pieces_index < pieces_length; ++pieces_index) {
-        var number = parseInt(matched_parts[pieces_index].match(/\${{(.*?)}}/)[1]);
+    // initialize the variable that contains the final ua
+    let outputAgent = localVariables["localString"];
 
-        if ((number >= 0) && (number < pieces_agent_length)) {
-            output_agent = output_agent.replace(matched_parts[pieces_index], user_agent_pieces[number]);
+    for (let piecesIndex = 0; piecesIndex < matchedParts.length; ++piecesIndex) {
+
+        // check wich piece was selected
+        let numberNow = parseInt(matchedParts[piecesIndex].match(/\${{(.*?)}}/)[1]);
+
+        // match selected piece with the original ua list
+        if ((numberNow >= 0) && (numberNow < userAgentPieces.length)) {
+            outputAgent = outputAgent.replace(matchedParts[piecesIndex], userAgentPieces[numberNow]);
         } else {
-            output_agent = output_agent.replace(matched_parts[pieces_index], "");
+            outputAgent = outputAgent.replace(matchedParts[piecesIndex], "");
         }
 
     }
 
-    if (on_or_not) return output_agent;
-    else return user_agent_now;
+    // return the build ua
+    return outputAgent;
+
 }
+
+function updateAgent() {
+    userAgentString = buildAgent();
+}
+
+// get the variables from the local storage
+storage.get(localVariablesKeys, function(returnedData){
+
+    let storageBuffer = {};
+
+    let returnedDataKeys = Object.keys(returnedData);
+
+    // iterate the local variables and initialize them
+    for (let i = 0; i < localVariablesKeys.length; ++i) {
+
+        // check if it was on the storage
+        let keyNowOffset = returnedDataKeys.indexOf(localVariablesKeys[i]);
+
+        if (keyNowOffset > -1) {
+            // if it was found, set it to the local variables
+            localVariables[localVariablesKeys[i]] = returnedData[returnedDataKeys[keyNowOffset]];
+        } else {
+            // if not add it to be stored
+            storageBuffer[localVariablesKeys[i]] = localVariables[localVariablesKeys[i]];
+        }
+
+    }
+
+    // store everything in the buffer
+    storage.set(storageBuffer, function(){
+        // raise alert if an error occurred
+        if (chrome.runtime.lastError) alert("Error on setting the storage data");
+    });
+
+    // update the icon once the data is normalized
+    updateIcon();
+
+    // build the ua string
+    if (localVariables["localString"] && localVariables["status"]) {
+        userAgentString = buildAgent();
+    }
+
+});
