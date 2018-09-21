@@ -133,8 +133,6 @@ storage.get(localVariablesKeys, function(returnedData){
     updateIcon();
 
     // build the ua string
-    if (localVariables["localString"] && localVariables["status"]) {
-        userAgentString = buildAgent();
-    }
+    updateAgent();
 
 });

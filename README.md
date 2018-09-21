@@ -2,8 +2,8 @@
 
 Changes the User-Agent header from web requests.
 
-### TODO
+#### How to use
 
-* Change the user agent data from the navigator object as well
-* Remove jQuery
-* Add how to use
+The switch on the popup is used for toggling the custom user agent on and off
+
+The text input is used to build the new user agent. It can translate the chunk symbols from the original user agent (ex. `${{0}}`)

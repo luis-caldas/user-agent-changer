@@ -24,7 +24,7 @@ $(document).ready(function() {
         piecesSymbols += "${{" + piecesIndex.toString() + "}}";
         piecesSymbols += " > ";
         piecesSymbols += userAgentPieces[piecesIndex];
-        piecesSymbols += "</br>";
+        piecesSymbols += "<br>";
     }
 
     // write the data to the popup
