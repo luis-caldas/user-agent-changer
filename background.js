@@ -50,12 +50,10 @@ function updateIcon() {
     chrome.browserAction.setIcon({
         path: localVariables["status"] ?
         {
-            "19": "/icons/icon19a.png",
-            "38": "/icons/icon38a.png"
+            "128": "/icons/icon128.png"
         } :
         {
-            "19": "/icons/icon19.png",
-            "38": "/icons/icon38.png"
+            "128": "/icons/icon128-mono.png"
         }
     })
 }
